@@ -92,36 +92,16 @@ namespace SSISAnalyticsDashboard.Controllers
                     _logger.LogInformation($"Successfully connected to {model.ServerName} using {model.AuthenticationMode} Authentication");
                 }
 
-                // Update appsettings.json (only reaches here if connection test passed or was skipped)
-                var appSettingsPath = Path.Combine(_environment.ContentRootPath, "appsettings.json");
-                var json = await System.IO.File.ReadAllTextAsync(appSettingsPath);
-                var jsonObj = JsonDocument.Parse(json);
+                // Update BOTH appsettings.json files (root and bin/Debug)
+                // 1. Update the root appsettings.json
+                var rootAppSettingsPath = Path.Combine(_environment.ContentRootPath, "appsettings.json");
+                await UpdateAppSettingsFile(rootAppSettingsPath, connectionString);
+                _logger.LogInformation($"Updated root appsettings.json at: {rootAppSettingsPath}");
                 
-                using var stream = new MemoryStream();
-                using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
-                {
-                    writer.WriteStartObject();
-                    
-                    foreach (var property in jsonObj.RootElement.EnumerateObject())
-                    {
-                        if (property.Name == "ConnectionStrings")
-                        {
-                            writer.WriteStartObject("ConnectionStrings");
-                            writer.WriteString("SSISDBConnection", connectionString);
-                            writer.WriteEndObject();
-                        }
-                        else
-                        {
-                            property.WriteTo(writer);
-                        }
-                    }
-                    
-                    writer.WriteEndObject();
-                }
-
-                await System.IO.File.WriteAllBytesAsync(appSettingsPath, stream.ToArray());
-                
-                _logger.LogInformation($"Updated appsettings.json with connection string for server: {model.ServerName}");
+                // 2. Update the bin/Debug appsettings.json (the one actually used by the running app)
+                var binAppSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+                await UpdateAppSettingsFile(binAppSettingsPath, connectionString);
+                _logger.LogInformation($"Updated bin appsettings.json at: {binAppSettingsPath}");
 
                 // Reload configuration
                 var configRoot = (IConfigurationRoot)_configuration;
@@ -166,5 +146,36 @@ namespace SSISAnalyticsDashboard.Controllers
                 return View(model);
             }
         }
+
+        private async Task UpdateAppSettingsFile(string filePath, string connectionString)
+        {
+            var json = await System.IO.File.ReadAllTextAsync(filePath);
+            var jsonObj = JsonDocument.Parse(json);
+            
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+            {
+                writer.WriteStartObject();
+                
+                foreach (var property in jsonObj.RootElement.EnumerateObject())
+                {
+                    if (property.Name == "ConnectionStrings")
+                    {
+                        writer.WriteStartObject("ConnectionStrings");
+                        writer.WriteString("SSISDBConnection", connectionString);
+                        writer.WriteEndObject();
+                    }
+                    else
+                    {
+                        property.WriteTo(writer);
+                    }
+                }
+                
+                writer.WriteEndObject();
+            }
+
+            await System.IO.File.WriteAllBytesAsync(filePath, stream.ToArray());
+        }
     }
 }
+

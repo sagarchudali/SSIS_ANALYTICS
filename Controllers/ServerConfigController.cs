@@ -91,41 +91,18 @@ namespace SSISAnalyticsDashboard.Controllers
                 // Test connection if requested
                 if (model.TestConnection)
                 {
-                    try
+                    // First test connection to master database
+                    using (var testConnection = new SqlConnection(testConnectionString))
                     {
-                        // First test connection to master database
-                        using (var testConnection = new SqlConnection(testConnectionString))
-                        {
-                            await testConnection.OpenAsync();
-                            _logger.LogInformation($"Successfully connected to server {model.ServerName}");
-                        }
-                        
-                        // Then try to connect to SSISDB
-                        using (var connection = new SqlConnection(connectionString))
-                        {
-                            await connection.OpenAsync();
-                            _logger.LogInformation($"Successfully connected to SSISDB on {model.ServerName} using {model.AuthenticationMode} Authentication");
-                        }
+                        await testConnection.OpenAsync();
+                        _logger.LogInformation($"Successfully connected to server {model.ServerName}");
                     }
-                    catch (SqlException sqlEx)
+                    
+                    // Then try to connect to SSISDB
+                    using (var connection = new SqlConnection(connectionString))
                     {
-                        // Provide more specific error messages
-                        string detailedError = sqlEx.Number switch
-                        {
-                            4060 => "SSISDB database not found. Please ensure SQL Server Integration Services is installed and configured.",
-                            18456 => "Login failed. Please check your credentials.",
-                            -1 => "Network-related error. Please check if SQL Server is running and the server name is correct.",
-                            53 => "Server not found or not accessible. Please verify the server name.",
-                            _ => sqlEx.Message
-                        };
-                        
-                        _logger.LogError(sqlEx, $"Connection test failed: {detailedError}");
-                        
-                        if (isAjax)
-                            return Json(new { success = false, message = detailedError });
-                        
-                        model.ErrorMessage = detailedError;
-                        return View(model);
+                        await connection.OpenAsync();
+                        _logger.LogInformation($"Successfully connected to SSISDB on {model.ServerName} using {model.AuthenticationMode} Authentication");
                     }
                 }
 
@@ -167,7 +144,17 @@ namespace SSISAnalyticsDashboard.Controllers
             catch (SqlException ex)
             {
                 _logger.LogError(ex, "Database connection failed");
-                string errorMsg = $"Failed to connect to server: {ex.Message}";
+                
+                // Provide more specific error messages
+                string errorMsg = ex.Number switch
+                {
+                    4060 => "SSISDB database not found. Please ensure SQL Server Integration Services is installed and configured.",
+                    18456 => "Login failed. Please check your credentials and ensure you have permission to access the server.",
+                    -1 => "Network-related error. Please check if SQL Server is running and the server name is correct.",
+                    53 => "Server not found or not accessible. Please verify the server name and network connectivity.",
+                    _ => $"Connection failed: {ex.Message}"
+                };
+                
                 if (isAjax)
                     return Json(new { success = false, message = errorMsg });
                 model.ErrorMessage = errorMsg;

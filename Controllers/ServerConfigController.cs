@@ -117,6 +117,9 @@ namespace SSISAnalyticsDashboard.Controllers
                 var configRoot = (IConfigurationRoot)_configuration;
                 configRoot.Reload();
 
+                // Set session flag to bypass middleware check on next request
+                HttpContext.Session.SetString("ConfigJustSaved", "true");
+
                 TempData["SuccessMessage"] = $"Successfully configured server: {model.ServerName} with {model.AuthenticationMode} Authentication";
                 
                 // Use absolute URL to avoid middleware redirect loop

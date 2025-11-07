@@ -12,6 +12,15 @@ builder.Services.AddScoped<ISSISDataService, SSISDataService>();
 // Add SignalR
 builder.Services.AddSignalR();
 
+// Add session support for configuration bypass
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -27,6 +36,8 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseSession();  // Add session middleware
+
 app.UseAuthorization();
 
 // Middleware to check server configuration
@@ -41,6 +52,14 @@ app.Use(async (context, next) =>
         path.StartsWith("/js") ||
         path.StartsWith("/dashboardhub"))
     {
+        await next();
+        return;
+    }
+
+    // Check if configuration was just saved (bypass check for this request)
+    if (context.Session.GetString("ConfigJustSaved") == "true")
+    {
+        context.Session.Remove("ConfigJustSaved");
         await next();
         return;
     }

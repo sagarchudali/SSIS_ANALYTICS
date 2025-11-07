@@ -29,13 +29,39 @@ app.UseRouting();
 
 app.UseAuthorization();
 
+// Middleware to check server configuration
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value?.ToLower() ?? "";
+    
+    // Skip check for ServerConfig, static files, and SignalR hub
+    if (path.StartsWith("/serverconfig") || 
+        path.StartsWith("/lib") || 
+        path.StartsWith("/css") || 
+        path.StartsWith("/js") ||
+        path.StartsWith("/dashboardhub"))
+    {
+        await next();
+        return;
+    }
+
+    var configuration = context.RequestServices.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("SSISDBConnection");
+    
+    if (string.IsNullOrEmpty(connectionString) || connectionString.Contains("your-server-name"))
+    {
+        context.Response.Redirect("/ServerConfig");
+        return;
+    }
+
+    await next();
+});
+
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Dashboard}/{action=Index}/{id?}");
+    pattern: "{controller=ServerConfig}/{action=Index}/{id?}");
 
 // Map SignalR Hub
 app.MapHub<DashboardHub>("/dashboardHub");
-
-app.Run();
 
 app.Run();

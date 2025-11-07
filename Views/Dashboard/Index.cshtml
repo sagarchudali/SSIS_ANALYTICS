@@ -45,17 +45,93 @@
     }
 
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-md-10">
-            <h1 class="display-4">SSIS Analytics Dashboard</h1>
-            <p class="text-muted">Monitor your SQL Server Integration Services executions <span id="autoRefreshStatus" class="badge bg-success">Auto-refresh: ON</span></p>
+        }
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i>
+            <strong>Success!</strong> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-        <div class="col-md-2 text-end">
-            <button class="btn btn-primary" onclick="manualRefresh()" id="refreshBtn">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
-            </button>
+    }
+
+    <!-- Header -->
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h1 class="display-4 mb-2">SSIS Analytics Dashboard</h1>
+            <p class="text-muted mb-0">
+                <i class="bi bi-server"></i> Monitor your SQL Server Integration Services executions 
+                <span id="autoRefreshStatus" class="badge bg-success ms-2">Auto-refresh: ON</span>
+            </p>
+        </div>
+        <div class="col-md-6 text-end">
+            <div class="btn-group" role="group">
+                <button class="btn btn-outline-primary" onclick="manualRefresh()" id="refreshBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <button class="btn btn-outline-success" onclick="exportToCSV()" id="exportBtn">
+                    <i class="bi bi-download"></i> Export Data
+                </button>
+                <a href="@Url.Action("Index", "ServerConfig")" class="btn btn-outline-secondary">
+                    <i class="bi bi-gear"></i> Settings
+                </a>
+            </div>
         </div>
     </div>
+
+    <!-- Advanced Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-funnel"></i> Filters
+                        <button class="btn btn-sm btn-link float-end" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </h5>
+                </div>
+                <div class="collapse show" id="filterCollapse">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Date Range</label>
+                                <select class="form-select" id="dateRangeFilter">
+                                    <option value="30" selected>Last 30 Days</option>
+                                    <option value="7">Last 7 Days</option>
+                                    <option value="1">Today</option>
+                                    <option value="90">Last 90 Days</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Status Filter</label>
+                                <select class="form-select" id="statusFilter">
+                                    <option value="">All Statuses</option>
+                                    <option value="Succeeded">Succeeded</option>
+                                    <option value="Failed">Failed</option>
+                                    <option value="Running">Running</option>
+                                    <option value="Pending">Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Search Packages</label>
+                                <input type="text" class="form-control" id="packageSearch" placeholder="Search by package name...">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" onclick="applyFilters()">
+                                    <i class="bi bi-check2-circle"></i> Apply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Cards -->
+```
 
     <!-- Metrics Cards -->
     <div class="row g-4 mb-4" id="metricsCards">
@@ -740,5 +816,93 @@
                 connection.stop();
             }
         });
+
+        // Filter functionality
+        function applyFilters() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const searchTerm = document.getElementById('packageSearch').value.toLowerCase();
+            
+            // Filter Recent Executions
+            filterTable('recentExecutionsTable', statusFilter, searchTerm, 1, 3);
+            
+            // Filter Last Executed Packages
+            filterTable('lastExecutedPackagesTable', statusFilter, searchTerm, 1, 4);
+            
+            console.log('✅ Filters applied');
+        }
+
+        function filterTable(tableId, status, searchTerm, packageNameCol, statusCol) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            let visibleCount = 0;
+            
+            for (let row of rows) {
+                const cells = row.getElementsByTagName('td');
+                if (cells.length === 0 || cells[0].getAttribute('colspan')) continue;
+                
+                const packageName = cells[packageNameCol].textContent.toLowerCase();
+                const rowStatus = cells[statusCol].textContent.trim();
+                
+                let showRow = true;
+                
+                // Status filter
+                if (status && !rowStatus.includes(status)) {
+                    showRow = false;
+                }
+                
+                // Search filter
+                if (searchTerm && !packageName.includes(searchTerm)) {
+                    showRow = false;
+                }
+                
+                row.style.display = showRow ? '' : 'none';
+                if (showRow) visibleCount++;
+            }
+            
+            console.log(`${tableId}: ${visibleCount} rows visible`);
+        }
+
+        // Export to CSV functionality
+        function exportToCSV() {
+            const dateRange = document.getElementById('dateRangeFilter').value;
+            const timestamp = new Date().toISOString().slice(0, 10);
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Export Metrics
+            csvContent += "SSIS Analytics Export - " + timestamp + "\n\n";
+            csvContent += "Metrics Summary\n";
+            csvContent += "Metric,Value\n";
+            csvContent += `Total Executions,@Model.Metrics.TotalExecutions\n`;
+            csvContent += `Successful Executions,@Model.Metrics.SuccessfulExecutions\n`;
+            csvContent += `Failed Executions,@Model.Metrics.FailedExecutions\n`;
+            csvContent += `Success Rate,@Model.Metrics.SuccessRate%\n`;
+            csvContent += `Average Duration,@Model.Metrics.AvgDuration seconds\n\n`;
+            
+            // Export Last Executed Packages
+            csvContent += "Last 10 Executed Packages\n";
+            csvContent += "Execution ID,Package Name,Folder,Project,Status,Start Time,End Time,Duration (seconds)\n";
+            
+            @foreach (var pkg in Model.LastExecutedPackages)
+            {
+                var endTime = pkg.EndTime.HasValue ? pkg.EndTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : "N/A";
+                <text>
+                csvContent += `@pkg.ExecutionId,"@pkg.PackageName","@pkg.FolderName","@pkg.ProjectName","@pkg.Status","@pkg.StartTime.ToString("yyyy-MM-dd HH:mm:ss")","@endTime",@pkg.Duration\n`;
+                </text>
+            }
+            
+            // Create download link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `SSIS_Analytics_${timestamp}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            console.log('✅ Data exported to CSV');
+        }
     </script>
 }

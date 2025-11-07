@@ -75,21 +75,58 @@ namespace SSISAnalyticsDashboard.Controllers
             {
                 // Build connection string based on authentication mode
                 string connectionString;
+                string testConnectionString; // For initial connection test to master db
+                
                 if (model.AuthenticationMode == "Windows")
                 {
-                    connectionString = $"Server={model.ServerName};Database=SSISDB;Integrated Security=true;TrustServerCertificate=true;";
+                    connectionString = $"Server={model.ServerName};Database=SSISDB;Integrated Security=true;TrustServerCertificate=true;Encrypt=false;";
+                    testConnectionString = $"Server={model.ServerName};Database=master;Integrated Security=true;TrustServerCertificate=true;Encrypt=false;";
                 }
                 else
                 {
-                    connectionString = $"Server={model.ServerName};Database=SSISDB;User Id={model.Username};Password={model.Password};TrustServerCertificate=true;";
+                    connectionString = $"Server={model.ServerName};Database=SSISDB;User Id={model.Username};Password={model.Password};TrustServerCertificate=true;Encrypt=false;";
+                    testConnectionString = $"Server={model.ServerName};Database=master;User Id={model.Username};Password={model.Password};TrustServerCertificate=true;Encrypt=false;";
                 }
 
                 // Test connection if requested
                 if (model.TestConnection)
                 {
-                    using var connection = new SqlConnection(connectionString);
-                    await connection.OpenAsync();
-                    _logger.LogInformation($"Successfully connected to {model.ServerName} using {model.AuthenticationMode} Authentication");
+                    try
+                    {
+                        // First test connection to master database
+                        using (var testConnection = new SqlConnection(testConnectionString))
+                        {
+                            await testConnection.OpenAsync();
+                            _logger.LogInformation($"Successfully connected to server {model.ServerName}");
+                        }
+                        
+                        // Then try to connect to SSISDB
+                        using (var connection = new SqlConnection(connectionString))
+                        {
+                            await connection.OpenAsync();
+                            _logger.LogInformation($"Successfully connected to SSISDB on {model.ServerName} using {model.AuthenticationMode} Authentication");
+                        }
+                    }
+                    catch (SqlException sqlEx)
+                    {
+                        // Provide more specific error messages
+                        string detailedError = sqlEx.Number switch
+                        {
+                            4060 => "SSISDB database not found. Please ensure SQL Server Integration Services is installed and configured.",
+                            18456 => "Login failed. Please check your credentials.",
+                            -1 => "Network-related error. Please check if SQL Server is running and the server name is correct.",
+                            53 => "Server not found or not accessible. Please verify the server name.",
+                            _ => sqlEx.Message
+                        };
+                        
+                        _logger.LogError(sqlEx, $"Connection test failed: {detailedError}");
+                        
+                        if (isAjax)
+                            return Json(new { success = false, message = detailedError });
+                        
+                        model.ErrorMessage = detailedError;
+                        return View(model);
+                    }
                 }
 
                 // Update BOTH appsettings.json files (root and bin/Debug)

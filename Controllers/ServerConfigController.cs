@@ -28,7 +28,8 @@ namespace SSISAnalyticsDashboard.Controllers
             var model = new ServerConfigViewModel
             {
                 IsConfigured = !string.IsNullOrEmpty(connectionString) && 
-                              !connectionString.Contains("your-server-name")
+                              !connectionString.Contains("your-server-name"),
+                AuthenticationMode = "Windows" // Default to Windows Auth
             };
 
             if (model.IsConfigured)
@@ -36,6 +37,11 @@ namespace SSISAnalyticsDashboard.Controllers
                 // Extract server name from connection string
                 var builder = new SqlConnectionStringBuilder(connectionString);
                 model.ServerName = builder.DataSource;
+                model.AuthenticationMode = builder.IntegratedSecurity ? "Windows" : "SQL";
+                if (!builder.IntegratedSecurity)
+                {
+                    model.Username = builder.UserID;
+                }
             }
 
             return View(model);
@@ -50,17 +56,32 @@ namespace SSISAnalyticsDashboard.Controllers
                 return View(model);
             }
 
+            // Validate SQL Auth credentials
+            if (model.AuthenticationMode == "SQL" && (string.IsNullOrEmpty(model.Username) || string.IsNullOrEmpty(model.Password)))
+            {
+                model.ErrorMessage = "Username and Password are required for SQL Server Authentication.";
+                return View(model);
+            }
+
             try
             {
-                // Build connection string
-                var connectionString = $"Server={model.ServerName};Database=SSISDB;Integrated Security=true;TrustServerCertificate=true;";
+                // Build connection string based on authentication mode
+                string connectionString;
+                if (model.AuthenticationMode == "Windows")
+                {
+                    connectionString = $"Server={model.ServerName};Database=SSISDB;Integrated Security=true;TrustServerCertificate=true;";
+                }
+                else
+                {
+                    connectionString = $"Server={model.ServerName};Database=SSISDB;User Id={model.Username};Password={model.Password};TrustServerCertificate=true;";
+                }
 
                 // Test connection if requested
                 if (model.TestConnection)
                 {
                     using var connection = new SqlConnection(connectionString);
                     await connection.OpenAsync();
-                    _logger.LogInformation($"Successfully connected to {model.ServerName}");
+                    _logger.LogInformation($"Successfully connected to {model.ServerName} using {model.AuthenticationMode} Authentication");
                 }
 
                 // Update appsettings.json
@@ -92,8 +113,14 @@ namespace SSISAnalyticsDashboard.Controllers
 
                 await System.IO.File.WriteAllBytesAsync(appSettingsPath, stream.ToArray());
 
-                TempData["SuccessMessage"] = $"Successfully configured server: {model.ServerName}";
-                return RedirectToAction("Index", "Dashboard");
+                // Reload configuration
+                var configRoot = (IConfigurationRoot)_configuration;
+                configRoot.Reload();
+
+                TempData["SuccessMessage"] = $"Successfully configured server: {model.ServerName} with {model.AuthenticationMode} Authentication";
+                
+                // Use absolute URL to avoid middleware redirect loop
+                return Redirect("/Dashboard/Index");
             }
             catch (SqlException ex)
             {

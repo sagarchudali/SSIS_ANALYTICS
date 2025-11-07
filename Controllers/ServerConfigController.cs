@@ -92,7 +92,7 @@ namespace SSISAnalyticsDashboard.Controllers
                     _logger.LogInformation($"Successfully connected to {model.ServerName} using {model.AuthenticationMode} Authentication");
                 }
 
-                // Update appsettings.json
+                // Update appsettings.json (only reaches here if connection test passed or was skipped)
                 var appSettingsPath = Path.Combine(_environment.ContentRootPath, "appsettings.json");
                 var json = await System.IO.File.ReadAllTextAsync(appSettingsPath);
                 var jsonObj = JsonDocument.Parse(json);
@@ -120,6 +120,8 @@ namespace SSISAnalyticsDashboard.Controllers
                 }
 
                 await System.IO.File.WriteAllBytesAsync(appSettingsPath, stream.ToArray());
+                
+                _logger.LogInformation($"Updated appsettings.json with connection string for server: {model.ServerName}");
 
                 // Reload configuration
                 var configRoot = (IConfigurationRoot)_configuration;

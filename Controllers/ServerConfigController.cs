@@ -121,6 +121,7 @@ namespace SSISAnalyticsDashboard.Controllers
                 HttpContext.Session.SetString("ConfigJustSaved", "true");
 
                 TempData["SuccessMessage"] = $"Successfully configured server: {model.ServerName} with {model.AuthenticationMode} Authentication";
+                TempData["ShowSuccessAlert"] = "true";
                 
                 // Use absolute URL to avoid middleware redirect loop
                 return Redirect("/Dashboard/Index");

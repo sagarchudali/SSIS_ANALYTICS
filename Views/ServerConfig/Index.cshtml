@@ -177,6 +177,85 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     
     <script>
+        // Handle form submission with AJAX to show success alert
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            
+            form.addEventListener('submit', function(e) {
+                if (!form.checkValidity()) {
+                    return; // Let default validation handle it
+                }
+                
+                e.preventDefault();
+                
+                // Show loading state
+                const originalBtnText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Connecting...';
+                
+                // Submit form via fetch
+                const formData = new FormData(form);
+                
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        // Configuration successful - show success alert
+                        showSuccessAlert(formData.get('ServerName'), formData.get('AuthenticationMode'));
+                    } else {
+                        // Error occurred - reload page to show error
+                        window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                    alert('An error occurred. Please try again.');
+                });
+            });
+        });
+        
+        function showSuccessAlert(serverName, authMode) {
+            // Show success alert popup
+            const alertHtml = `
+                <div class="modal fade show" id="successModal" tabindex="-1" style="display: block; background: rgba(0,0,0,0.5);">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-check-circle-fill"></i> Connection Successful!
+                                </h5>
+                            </div>
+                            <div class="modal-body text-center py-4">
+                                <div class="mb-3">
+                                    <i class="bi bi-database-check text-success" style="font-size: 4rem;"></i>
+                                </div>
+                                <h5 class="mb-3">Successfully Connected!</h5>
+                                <p class="mb-2">
+                                    <strong>Server:</strong> ${serverName}<br>
+                                    <strong>Authentication:</strong> ${authMode}
+                                </p>
+                                <p class="text-muted">
+                                    <i class="bi bi-arrow-right-circle"></i> Redirecting to dashboard...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', alertHtml);
+            
+            // Redirect after 2.5 seconds
+            setTimeout(function() {
+                window.location.href = '/Dashboard/Index';
+            }, 2500);
+        }
+        
         // Toggle authentication fields based on selected mode
         function toggleAuthFields() {
             const authMode = document.getElementById('authMode').value;

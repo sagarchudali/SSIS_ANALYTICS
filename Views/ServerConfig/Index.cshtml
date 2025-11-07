@@ -71,20 +71,22 @@
                             </div>
                         }
 
-                        <form asp-action="Index" method="post">
+                        <form asp-action="Index" asp-controller="ServerConfig" method="post">
                             @Html.AntiForgeryToken()
                             
-                            <input type="hidden" asp-for="AuthenticationMode" value="Windows" />
+                            <input type="hidden" name="AuthenticationMode" value="Windows" />
 
                             <div class="mb-4">
-                                <label asp-for="ServerName" class="form-label">
+                                <label for="ServerName" class="form-label">
                                     <i class="bi bi-hdd-network"></i> SQL Server Instance Name
                                 </label>
-                                <input asp-for="ServerName" 
+                                <input type="text"
+                                       id="ServerName"
+                                       name="ServerName" 
                                        class="form-control form-control-lg" 
                                        placeholder="e.g., localhost, .\SQLEXPRESS, SERVER\INSTANCE"
+                                       value="@Model.ServerName"
                                        required />
-                                <span asp-validation-for="ServerName" class="text-danger"></span>
                                 <div class="form-text">
                                     <i class="bi bi-info-circle"></i> 
                                     Enter your SQL Server instance name (Windows Authentication)
@@ -92,7 +94,7 @@
                             </div>
 
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
+                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
                                     <i class="bi bi-check-circle"></i> Save & Go to Dashboard
                                 </button>
                                 
@@ -129,6 +131,26 @@
 
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            console.log('Form found:', form);
+            console.log('Submit button found:', submitBtn);
+            
+            form.addEventListener('submit', function(e) {
+                console.log('Form is being submitted!');
+                console.log('Form action:', form.action);
+                console.log('Form method:', form.method);
+                console.log('Server name value:', document.getElementById('ServerName').value);
+                // Let it submit normally - don't prevent default
+            });
+            
+            submitBtn.addEventListener('click', function(e) {
+                console.log('Submit button clicked!');
+            });
+        });
+    </script>
 }
 

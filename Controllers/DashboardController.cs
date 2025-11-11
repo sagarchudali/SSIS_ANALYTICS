@@ -33,7 +33,11 @@ namespace SSISAnalyticsDashboard.Controllers
                     Trends = await _dataService.GetTrendsAsync(),
                     RecentErrors = await _dataService.GetErrorsAsync(),
                     RecentExecutions = await _dataService.GetExecutionsAsync(),
-                    LastExecutedPackages = await _dataService.GetLastExecutedPackagesAsync(10)
+                    LastExecutedPackages = await _dataService.GetLastExecutedPackagesAsync(10),
+                    CurrentExecutions = await _dataService.GetCurrentExecutionsAsync(),
+                    PackagePerformanceStats = await _dataService.GetPackagePerformanceStatsAsync(30),
+                    FailurePatterns = await _dataService.GetFailurePatternsAsync(30),
+                    ExecutionTimeline = await _dataService.GetExecutionTimelineAsync(24)
                 };
 
                 return View(viewModel);
@@ -107,6 +111,86 @@ namespace SSISAnalyticsDashboard.Controllers
             {
                 _logger.LogError(ex, "Error fetching last executed packages");
                 return StatusCode(500, new { error = "Failed to fetch last executed packages" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCurrentExecutions()
+        {
+            if (string.IsNullOrEmpty(HttpContext.Session.GetString("SSISDBConnection")))
+            {
+                return Unauthorized(new { error = "Not configured" });
+            }
+
+            try
+            {
+                var currentExecutions = await _dataService.GetCurrentExecutionsAsync();
+                return Json(currentExecutions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching current executions");
+                return StatusCode(500, new { error = "Failed to fetch current executions" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPackagePerformance()
+        {
+            if (string.IsNullOrEmpty(HttpContext.Session.GetString("SSISDBConnection")))
+            {
+                return Unauthorized(new { error = "Not configured" });
+            }
+
+            try
+            {
+                var performance = await _dataService.GetPackagePerformanceStatsAsync(30);
+                return Json(performance);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching package performance");
+                return StatusCode(500, new { error = "Failed to fetch package performance" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetFailurePatterns()
+        {
+            if (string.IsNullOrEmpty(HttpContext.Session.GetString("SSISDBConnection")))
+            {
+                return Unauthorized(new { error = "Not configured" });
+            }
+
+            try
+            {
+                var patterns = await _dataService.GetFailurePatternsAsync(30);
+                return Json(patterns);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching failure patterns");
+                return StatusCode(500, new { error = "Failed to fetch failure patterns" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetExecutionTimeline()
+        {
+            if (string.IsNullOrEmpty(HttpContext.Session.GetString("SSISDBConnection")))
+            {
+                return Unauthorized(new { error = "Not configured" });
+            }
+
+            try
+            {
+                var timeline = await _dataService.GetExecutionTimelineAsync(24);
+                return Json(timeline);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching execution timeline");
+                return StatusCode(500, new { error = "Failed to fetch execution timeline" });
             }
         }
     }

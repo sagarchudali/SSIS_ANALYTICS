@@ -130,9 +130,240 @@
         </div>
     </div>
 
-    <!-- Metrics Cards -->
-```
+    <!-- Currently Running Packages -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-play-circle"></i> Currently Running Packages
+                        <span class="badge bg-light text-dark ms-2" id="currentExecutionCount">@Model.CurrentExecutions.Count</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.CurrentExecutions != null && Model.CurrentExecutions.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="currentExecutionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Execution ID</th>
+                                        <th>Package Name</th>
+                                        <th>Status</th>
+                                        <th>Started</th>
+                                        <th>Duration</th>
+                                        <th>Executed By</th>
+                                        <th>Alert</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var exec in Model.CurrentExecutions)
+                                    {
+                                        <tr>
+                                            <td><strong>@exec.ExecutionId</strong></td>
+                                            <td>@exec.PackageName</td>
+                                            <td><span class="badge bg-primary">@exec.StatusDescription</span></td>
+                                            <td>@exec.StartTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                            <td>
+                                                @{
+                                                    var duration = TimeSpan.FromSeconds(exec.DurationSeconds);
+                                                    <span class="@(exec.IsLongRunning ? "text-danger fw-bold" : "")">
+                                                        @string.Format("{0:D2}:{1:D2}:{2:D2}", duration.Hours, duration.Minutes, duration.Seconds)
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>@exec.ExecutedBy</td>
+                                            <td>
+                                                @if (exec.IsLongRunning)
+                                                {
+                                                    <span class="badge bg-warning" title="Running longer than 30 minutes">
+                                                        <i class="bi bi-exclamation-triangle"></i> Long Running
+                                                    </span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle"></i> No packages currently executing
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Package Performance Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-speedometer2"></i> Package Performance (Last 30 Days)</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.PackagePerformanceStats != null && Model.PackagePerformanceStats.Any())
+                    {
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Package</th>
+                                        <th>Executions</th>
+                                        <th>Success Rate</th>
+                                        <th>Avg Duration</th>
+                                        <th>Last Run</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var perf in Model.PackagePerformanceStats.Take(10))
+                                    {
+                                        <tr>
+                                            <td class="text-truncate" style="max-width: 200px;" title="@perf.PackageName">@perf.PackageName</td>
+                                            <td><span class="badge bg-secondary">@perf.TotalExecutions</span></td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar @(perf.SuccessRate >= 90 ? "bg-success" : perf.SuccessRate >= 70 ? "bg-warning" : "bg-danger")" 
+                                                         role="progressbar" 
+                                                         style="width: @perf.SuccessRate%">
+                                                        @perf.SuccessRate%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var avgDuration = TimeSpan.FromSeconds(perf.AvgDurationSeconds);
+                                                    <span>@string.Format("{0:D2}:{1:D2}:{2:D2}", avgDuration.Hours, avgDuration.Minutes, avgDuration.Seconds)</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-@(perf.LastExecutionStatus == "Success" ? "success" : "danger")">
+                                                    @perf.LastExecutionStatus
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">No performance data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-bug"></i> Top Failure Patterns (Last 30 Days)</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.FailurePatterns != null && Model.FailurePatterns.Any())
+                    {
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-sm">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Package</th>
+                                        <th>Failures</th>
+                                        <th>Failure Rate</th>
+                                        <th>Last Failure</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var pattern in Model.FailurePatterns.Take(10))
+                                    {
+                                        <tr>
+                                            <td class="text-truncate" style="max-width: 200px;" title="@pattern.PackageName">
+                                                <strong>@pattern.PackageName</strong>
+                                            </td>
+                                            <td><span class="badge bg-danger">@pattern.FailureCount</span></td>
+                                            <td>
+                                                <span class="text-danger fw-bold">@pattern.FailureRate%</span>
+                                            </td>
+                                            <td>
+                                                <small>@(pattern.LastFailureTime?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</small>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="bg-light">
+                                                <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="@pattern.MostCommonError">
+                                                    <i class="bi bi-exclamation-circle"></i> @pattern.MostCommonError
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success mb-0">
+                            <i class="bi bi-check-circle"></i> No failures detected in the last 30 days!
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Execution Timeline -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-clock-history"></i> Execution Timeline (Last 24 Hours)</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.ExecutionTimeline != null && Model.ExecutionTimeline.Any())
+                    {
+                        <div class="timeline" style="max-height: 500px; overflow-y: auto;">
+                            @foreach (var item in Model.ExecutionTimeline)
+                            {
+                                <div class="timeline-item border-start border-3 border-@item.StatusColor ps-3 pb-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                <span class="badge bg-@item.StatusColor">@item.Status</span>
+                                                <strong>@item.PackageName</strong>
+                                            </h6>
+                                            <p class="mb-1 text-muted">
+                                                <small>
+                                                    <i class="bi bi-clock"></i> Started: @item.StartTime.ToString("yyyy-MM-dd HH:mm:ss")
+                                                    @if (item.EndTime.HasValue)
+                                                    {
+                                                        <span>| Ended: @item.EndTime.Value.ToString("HH:mm:ss")</span>
+                                                    }
+                                                </small>
+                                            </p>
+                                            <p class="mb-0">
+                                                <span class="badge bg-secondary">Duration: @item.DurationMinutes min</span>
+                                                <span class="badge bg-light text-dark">ID: @item.ExecutionId</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">No executions in the last 24 hours</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Cards -->
     <!-- Metrics Cards -->
     <div class="row g-4 mb-4" id="metricsCards">
         <div class="col-md-3">

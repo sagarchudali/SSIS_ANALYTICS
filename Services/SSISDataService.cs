@@ -287,5 +287,248 @@ namespace SSISAnalyticsDashboard.Services
                 throw;
             }
         }
+
+        public async Task<List<CurrentExecution>> GetCurrentExecutionsAsync()
+        {
+            try
+            {
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
+                await connection.OpenAsync();
+
+                var query = @"
+                    SELECT 
+                        e.execution_id,
+                        e.package_name,
+                        e.start_time,
+                        DATEDIFF(SECOND, e.start_time, GETDATE()) as duration_seconds,
+                        e.status,
+                        CASE e.status
+                            WHEN 1 THEN 'Created'
+                            WHEN 2 THEN 'Running'
+                            WHEN 3 THEN 'Canceled'
+                            WHEN 4 THEN 'Failed'
+                            WHEN 5 THEN 'Pending'
+                            WHEN 6 THEN 'Ended Unexpectedly'
+                            WHEN 7 THEN 'Succeeded'
+                            WHEN 8 THEN 'Stopping'
+                            WHEN 9 THEN 'Completed'
+                            ELSE 'Unknown'
+                        END as status_description,
+                        e.executed_as_name
+                    FROM [SSISDB].[catalog].[executions] e
+                    WHERE e.status IN (1, 2, 5, 8)  -- Created, Running, Pending, Stopping
+                    ORDER BY e.start_time DESC";
+
+                using var command = new SqlCommand(query, connection);
+                using var reader = await command.ExecuteReaderAsync();
+
+                var currentExecutions = new List<CurrentExecution>();
+                while (await reader.ReadAsync())
+                {
+                    var durationSeconds = reader.GetInt32(3);
+                    currentExecutions.Add(new CurrentExecution
+                    {
+                        ExecutionId = reader.GetInt64(0),
+                        PackageName = reader.GetString(1),
+                        StartTime = reader.GetDateTime(2),
+                        DurationSeconds = durationSeconds,
+                        Status = reader.GetInt32(4).ToString(),
+                        StatusDescription = reader.GetString(5),
+                        ExecutedBy = reader.IsDBNull(6) ? "N/A" : reader.GetString(6),
+                        IsLongRunning = durationSeconds > 1800 // 30 minutes
+                    });
+                }
+
+                return currentExecutions;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching current executions");
+                throw;
+            }
+        }
+
+        public async Task<List<PackagePerformance>> GetPackagePerformanceStatsAsync(int days = 30)
+        {
+            try
+            {
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
+                await connection.OpenAsync();
+
+                var query = @"
+                    SELECT 
+                        e.package_name,
+                        COUNT(*) as total_executions,
+                        SUM(CASE WHEN e.status = 7 THEN 1 ELSE 0 END) as successful_executions,
+                        SUM(CASE WHEN e.status = 4 THEN 1 ELSE 0 END) as failed_executions,
+                        CAST(SUM(CASE WHEN e.status = 7 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS DECIMAL(5,2)) as success_rate,
+                        AVG(DATEDIFF(SECOND, e.start_time, e.end_time)) as avg_duration,
+                        MIN(DATEDIFF(SECOND, e.start_time, e.end_time)) as min_duration,
+                        MAX(DATEDIFF(SECOND, e.start_time, e.end_time)) as max_duration,
+                        MAX(e.start_time) as last_execution_time,
+                        (SELECT TOP 1 status FROM [SSISDB].[catalog].[executions] 
+                         WHERE package_name = e.package_name 
+                         ORDER BY start_time DESC) as last_status
+                    FROM [SSISDB].[catalog].[executions] e
+                    WHERE e.start_time >= DATEADD(day, -@Days, GETDATE())
+                    GROUP BY e.package_name
+                    ORDER BY total_executions DESC";
+
+                using var command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@Days", days);
+                using var reader = await command.ExecuteReaderAsync();
+
+                var packagePerformance = new List<PackagePerformance>();
+                while (await reader.ReadAsync())
+                {
+                    packagePerformance.Add(new PackagePerformance
+                    {
+                        PackageName = reader.GetString(0),
+                        TotalExecutions = reader.GetInt32(1),
+                        SuccessfulExecutions = reader.GetInt32(2),
+                        FailedExecutions = reader.GetInt32(3),
+                        SuccessRate = reader.GetDecimal(4),
+                        AvgDurationSeconds = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
+                        MinDurationSeconds = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
+                        MaxDurationSeconds = reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
+                        LastExecutionTime = reader.IsDBNull(8) ? null : reader.GetDateTime(8),
+                        LastExecutionStatus = reader.GetInt32(9) == 7 ? "Success" : "Failed"
+                    });
+                }
+
+                return packagePerformance;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching package performance stats");
+                throw;
+            }
+        }
+
+        public async Task<List<FailurePattern>> GetFailurePatternsAsync(int days = 30)
+        {
+            try
+            {
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
+                await connection.OpenAsync();
+
+                var query = @"
+                    SELECT 
+                        e.package_name,
+                        COUNT(*) as failure_count,
+                        (SELECT TOP 1 em.message 
+                         FROM [SSISDB].[catalog].[event_messages] em
+                         WHERE em.operation_id = e.execution_id 
+                         AND em.message_type = 120
+                         ORDER BY em.message_time DESC) as most_common_error,
+                        MAX(e.end_time) as last_failure_time,
+                        CAST(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM [SSISDB].[catalog].[executions] 
+                                                   WHERE package_name = e.package_name 
+                                                   AND start_time >= DATEADD(day, -@Days, GETDATE())) AS DECIMAL(5,2)) as failure_rate
+                    FROM [SSISDB].[catalog].[executions] e
+                    WHERE e.status = 4  -- Failed
+                    AND e.start_time >= DATEADD(day, -@Days, GETDATE())
+                    GROUP BY e.package_name
+                    HAVING COUNT(*) > 0
+                    ORDER BY failure_count DESC";
+
+                using var command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@Days", days);
+                using var reader = await command.ExecuteReaderAsync();
+
+                var failurePatterns = new List<FailurePattern>();
+                while (await reader.ReadAsync())
+                {
+                    failurePatterns.Add(new FailurePattern
+                    {
+                        PackageName = reader.GetString(0),
+                        FailureCount = reader.GetInt32(1),
+                        MostCommonError = reader.IsDBNull(2) ? "N/A" : reader.GetString(2),
+                        LastFailureTime = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
+                        FailureRate = reader.GetDecimal(4)
+                    });
+                }
+
+                return failurePatterns;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching failure patterns");
+                throw;
+            }
+        }
+
+        public async Task<List<ExecutionTimeline>> GetExecutionTimelineAsync(int hours = 24)
+        {
+            try
+            {
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
+                await connection.OpenAsync();
+
+                var query = @"
+                    SELECT 
+                        e.execution_id,
+                        e.package_name,
+                        e.start_time,
+                        e.end_time,
+                        DATEDIFF(MINUTE, e.start_time, ISNULL(e.end_time, GETDATE())) as duration_minutes,
+                        e.status,
+                        CASE e.status
+                            WHEN 7 THEN 'success'
+                            WHEN 4 THEN 'danger'
+                            WHEN 2 THEN 'primary'
+                            WHEN 3 THEN 'warning'
+                            ELSE 'secondary'
+                        END as status_color
+                    FROM [SSISDB].[catalog].[executions] e
+                    WHERE e.start_time >= DATEADD(hour, -@Hours, GETDATE())
+                    ORDER BY e.start_time DESC";
+
+                using var command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@Hours", hours);
+                using var reader = await command.ExecuteReaderAsync();
+
+                var timeline = new List<ExecutionTimeline>();
+                while (await reader.ReadAsync())
+                {
+                    var status = reader.GetInt32(5);
+                    var statusText = status switch
+                    {
+                        1 => "Created",
+                        2 => "Running",
+                        3 => "Canceled",
+                        4 => "Failed",
+                        5 => "Pending",
+                        6 => "Ended Unexpectedly",
+                        7 => "Succeeded",
+                        8 => "Stopping",
+                        9 => "Completed",
+                        _ => "Unknown"
+                    };
+
+                    timeline.Add(new ExecutionTimeline
+                    {
+                        ExecutionId = reader.GetInt64(0),
+                        PackageName = reader.GetString(1),
+                        StartTime = reader.GetDateTime(2),
+                        EndTime = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
+                        DurationMinutes = reader.GetInt32(4),
+                        Status = statusText,
+                        StatusColor = reader.GetString(6)
+                    });
+                }
+
+                return timeline;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching execution timeline");
+                throw;
+            }
+        }
     }
 }

@@ -133,13 +133,14 @@ namespace SSISAnalyticsDashboard.Services
                         e.execution_id,
                         e.package_name,
                         em.message_time,
-                        em.message_source_type,
+                        em.event_message_id,
                         em.message
                     FROM [SSISDB].[catalog].[executions] e
                     INNER JOIN [SSISDB].[catalog].[event_messages] em 
-                        ON e.execution_id = em.execution_id
-                    WHERE em.message_type = 120
+                        ON e.execution_id = em.operation_id
+                    WHERE em.message_type = 120  -- Error messages
                         AND e.start_time >= DATEADD(day, -30, GETDATE())
+                        AND e.status = 4  -- Failed executions
                     ORDER BY em.message_time DESC";
 
                 using var command = new SqlCommand(query, connection);
@@ -153,7 +154,7 @@ namespace SSISAnalyticsDashboard.Services
                         ExecutionId = reader.GetInt64(0),
                         PackageName = reader.GetString(1),
                         ErrorTime = reader.GetDateTimeOffset(2).DateTime,
-                        ErrorCode = reader.GetInt16(3),
+                        ErrorCode = reader.GetInt32(3),
                         ErrorDescription = reader.GetString(4)
                     });
                 }

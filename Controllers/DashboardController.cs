@@ -15,7 +15,7 @@ namespace SSISAnalyticsDashboard.Controllers
             _logger = logger;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? businessUnit = null)
         {
             // Check if connection string exists in session
             var connectionString = HttpContext.Session.GetString("SSISDBConnection");
@@ -29,15 +29,15 @@ namespace SSISAnalyticsDashboard.Controllers
             {
                 var viewModel = new DashboardViewModel
                 {
-                    Metrics = await _dataService.GetMetricsAsync(),
-                    Trends = await _dataService.GetTrendsAsync(),
-                    RecentErrors = await _dataService.GetErrorsAsync(),
-                    RecentExecutions = await _dataService.GetExecutionsAsync(),
-                    LastExecutedPackages = await _dataService.GetLastExecutedPackagesAsync(10),
-                    CurrentExecutions = await _dataService.GetCurrentExecutionsAsync(),
-                    PackagePerformanceStats = await _dataService.GetPackagePerformanceStatsAsync(30),
-                    FailurePatterns = await _dataService.GetFailurePatternsAsync(30),
-                    ExecutionTimeline = await _dataService.GetExecutionTimelineAsync(24)
+                    Metrics = await _dataService.GetMetricsAsync(businessUnit),
+                    Trends = await _dataService.GetTrendsAsync(businessUnit),
+                    RecentErrors = await _dataService.GetErrorsAsync(businessUnit),
+                    RecentExecutions = await _dataService.GetExecutionsAsync(businessUnit),
+                    LastExecutedPackages = await _dataService.GetLastExecutedPackagesAsync(10, businessUnit),
+                    CurrentExecutions = await _dataService.GetCurrentExecutionsAsync(businessUnit),
+                    PackagePerformanceStats = await _dataService.GetPackagePerformanceStatsAsync(30, businessUnit),
+                    FailurePatterns = await _dataService.GetFailurePatternsAsync(30, businessUnit),
+                    ExecutionTimeline = await _dataService.GetExecutionTimelineAsync(24, businessUnit)
                 };
 
                 return View(viewModel);

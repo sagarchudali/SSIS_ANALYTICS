@@ -95,7 +95,18 @@
                 <div class="collapse show" id="filterCollapse">
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Business Unit</label>
+                                <select class="form-select" id="businessUnitFilter">
+                                    <option value="" selected>All Units</option>
+                                    <option value="ClientRepo">ClientRepo (CR_)</option>
+                                    <option value="ChartNav">ChartNav (CN_)</option>
+                                    <option value="EDS">EDS (EDS_)</option>
+                                    <option value="HIM">HIM (HIM_)</option>
+                                    <option value="Uncategorized">Uncategorized</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label">Date Range</label>
                                 <select class="form-select" id="dateRangeFilter">
                                     <option value="30" selected>Last 30 Days</option>
@@ -104,7 +115,7 @@
                                     <option value="90">Last 90 Days</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Status Filter</label>
                                 <select class="form-select" id="statusFilter">
                                     <option value="">All Statuses</option>
@@ -1050,9 +1061,17 @@
 
         // Filter functionality
         function applyFilters() {
+            const businessUnit = document.getElementById('businessUnitFilter').value;
             const statusFilter = document.getElementById('statusFilter').value;
             const searchTerm = document.getElementById('packageSearch').value.toLowerCase();
             
+            // Reload page with businessUnit filter if selected
+            if (businessUnit) {
+                window.location.href = `?businessUnit=${encodeURIComponent(businessUnit)}`;
+                return;
+            }
+            
+            // Client-side filtering for status and search
             // Filter Recent Executions
             filterTable('recentExecutionsTable', statusFilter, searchTerm, 1, 3);
             

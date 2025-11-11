@@ -1,5 +1,6 @@
 using Microsoft.Data.SqlClient;
 using SSISAnalyticsDashboard.Models;
+using SSISAnalyticsDashboard.Helpers;
 using System.Data;
 
 namespace SSISAnalyticsDashboard.Services
@@ -27,7 +28,7 @@ namespace SSISAnalyticsDashboard.Services
             throw new InvalidOperationException("Connection string not found in session. Please configure the server first.");
         }
 
-        public async Task<ExecutionMetrics> GetMetricsAsync()
+        public async Task<ExecutionMetrics> GetMetricsAsync(string? businessUnit = null)
         {
             try
             {
@@ -35,14 +36,17 @@ namespace SSISAnalyticsDashboard.Services
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
-                var query = @"
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
+
+                var query = $@"
                     SELECT 
                         COUNT(*) as TotalExecutions,
                         SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as FailedExecutions,
                         SUM(CASE WHEN status = 7 THEN 1 ELSE 0 END) as SuccessfulExecutions,
                         AVG(DATEDIFF(SECOND, start_time, end_time)) as AvgDuration
-                    FROM [SSISDB].[catalog].[executions]
-                    WHERE start_time >= DATEADD(day, -30, GETDATE())";
+                    FROM [SSISDB].[catalog].[executions] e
+                    WHERE start_time >= DATEADD(day, -30, GETDATE())
+                    {businessUnitFilter}";
 
                 using var command = new SqlCommand(query, connection);
                 using var reader = await command.ExecuteReaderAsync();
@@ -77,7 +81,7 @@ namespace SSISAnalyticsDashboard.Services
             }
         }
 
-        public async Task<List<ExecutionTrend>> GetTrendsAsync()
+        public async Task<List<ExecutionTrend>> GetTrendsAsync(string? businessUnit = null)
         {
             try
             {
@@ -85,14 +89,17 @@ namespace SSISAnalyticsDashboard.Services
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
-                var query = @"
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
+
+                var query = $@"
                     SELECT 
                         CAST(start_time AS DATE) as Date,
                         SUM(CASE WHEN status = 7 THEN 1 ELSE 0 END) as Success,
                         SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as Failed,
                         AVG(DATEDIFF(SECOND, start_time, end_time)) as AvgDuration
-                    FROM [SSISDB].[catalog].[executions]
+                    FROM [SSISDB].[catalog].[executions] e
                     WHERE start_time >= DATEADD(day, -30, GETDATE())
+                    {businessUnitFilter}
                     GROUP BY CAST(start_time AS DATE)
                     ORDER BY Date DESC";
 
@@ -120,7 +127,7 @@ namespace SSISAnalyticsDashboard.Services
             }
         }
 
-        public async Task<List<ErrorLog>> GetErrorsAsync()
+        public async Task<List<ErrorLog>> GetErrorsAsync(string? businessUnit = null)
         {
             try
             {
@@ -128,7 +135,9 @@ namespace SSISAnalyticsDashboard.Services
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
-                var query = @"
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
+
+                var query = $@"
                     SELECT TOP 50
                         e.execution_id,
                         e.package_name,
@@ -141,6 +150,7 @@ namespace SSISAnalyticsDashboard.Services
                     WHERE em.message_type = 120  -- Error messages
                         AND e.start_time >= DATEADD(day, -30, GETDATE())
                         AND e.status = 4  -- Failed executions
+                        {businessUnitFilter}
                     ORDER BY em.message_time DESC";
 
                 using var command = new SqlCommand(query, connection);
@@ -168,7 +178,7 @@ namespace SSISAnalyticsDashboard.Services
             }
         }
 
-        public async Task<List<PackageExecution>> GetExecutionsAsync()
+        public async Task<List<PackageExecution>> GetExecutionsAsync(string? businessUnit = null)
         {
             try
             {
@@ -176,7 +186,9 @@ namespace SSISAnalyticsDashboard.Services
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
-                var query = @"
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
+
+                var query = $@"
                     SELECT TOP 50
                         e.execution_id,
                         e.package_name,
@@ -199,6 +211,7 @@ namespace SSISAnalyticsDashboard.Services
                         DATEDIFF(SECOND, e.start_time, e.end_time) as Duration
                     FROM [SSISDB].[catalog].[executions] e
                     WHERE e.start_time >= DATEADD(day, -30, GETDATE())
+                    {businessUnitFilter}
                     ORDER BY e.start_time DESC";
 
                 using var command = new SqlCommand(query, connection);
@@ -229,13 +242,15 @@ namespace SSISAnalyticsDashboard.Services
             }
         }
 
-        public async Task<List<PackageExecution>> GetLastExecutedPackagesAsync(int count = 10)
+        public async Task<List<PackageExecution>> GetLastExecutedPackagesAsync(int count = 10, string? businessUnit = null)
         {
             try
             {
                 var connectionString = GetConnectionString();
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
+
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
 
                 var query = $@"
                     SELECT TOP {count}
@@ -259,6 +274,8 @@ namespace SSISAnalyticsDashboard.Services
                         e.end_time,
                         DATEDIFF(SECOND, e.start_time, e.end_time) as Duration
                     FROM [SSISDB].[catalog].[executions] e
+                    WHERE 1=1
+                    {businessUnitFilter}
                     ORDER BY e.start_time DESC";
 
                 using var command = new SqlCommand(query, connection);
@@ -289,7 +306,7 @@ namespace SSISAnalyticsDashboard.Services
             }
         }
 
-        public async Task<List<CurrentExecution>> GetCurrentExecutionsAsync()
+        public async Task<List<CurrentExecution>> GetCurrentExecutionsAsync(string? businessUnit = null)
         {
             try
             {
@@ -297,7 +314,9 @@ namespace SSISAnalyticsDashboard.Services
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
-                var query = @"
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
+
+                var query = $@"
                     SELECT 
                         e.execution_id,
                         e.package_name,
@@ -319,6 +338,7 @@ namespace SSISAnalyticsDashboard.Services
                         e.executed_as_name
                     FROM [SSISDB].[catalog].[executions] e
                     WHERE e.status IN (1, 2, 5, 8)  -- Created, Running, Pending, Stopping
+                    {businessUnitFilter}
                     ORDER BY e.start_time DESC";
 
                 using var command = new SqlCommand(query, connection);
@@ -350,7 +370,7 @@ namespace SSISAnalyticsDashboard.Services
             }
         }
 
-        public async Task<List<PackagePerformance>> GetPackagePerformanceStatsAsync(int days = 30)
+        public async Task<List<PackagePerformance>> GetPackagePerformanceStatsAsync(int days = 30, string? businessUnit = null)
         {
             try
             {
@@ -358,7 +378,9 @@ namespace SSISAnalyticsDashboard.Services
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
-                var query = @"
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
+
+                var query = $@"
                     SELECT 
                         e.package_name,
                         COUNT(*) as total_executions,
@@ -374,6 +396,7 @@ namespace SSISAnalyticsDashboard.Services
                          ORDER BY start_time DESC) as last_status
                     FROM [SSISDB].[catalog].[executions] e
                     WHERE e.start_time >= DATEADD(day, -@Days, GETDATE())
+                    {businessUnitFilter}
                     GROUP BY e.package_name
                     ORDER BY total_executions DESC";
 
@@ -408,7 +431,7 @@ namespace SSISAnalyticsDashboard.Services
             }
         }
 
-        public async Task<List<FailurePattern>> GetFailurePatternsAsync(int days = 30)
+        public async Task<List<FailurePattern>> GetFailurePatternsAsync(int days = 30, string? businessUnit = null)
         {
             try
             {
@@ -416,7 +439,9 @@ namespace SSISAnalyticsDashboard.Services
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
-                var query = @"
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
+
+                var query = $@"
                     SELECT 
                         e.package_name,
                         COUNT(*) as failure_count,
@@ -432,6 +457,7 @@ namespace SSISAnalyticsDashboard.Services
                     FROM [SSISDB].[catalog].[executions] e
                     WHERE e.status = 4  -- Failed
                     AND e.start_time >= DATEADD(day, -@Days, GETDATE())
+                    {businessUnitFilter}
                     GROUP BY e.package_name
                     HAVING COUNT(*) > 0
                     ORDER BY failure_count DESC";
@@ -462,7 +488,7 @@ namespace SSISAnalyticsDashboard.Services
             }
         }
 
-        public async Task<List<ExecutionTimeline>> GetExecutionTimelineAsync(int hours = 24)
+        public async Task<List<ExecutionTimeline>> GetExecutionTimelineAsync(int hours = 24, string? businessUnit = null)
         {
             try
             {
@@ -470,7 +496,9 @@ namespace SSISAnalyticsDashboard.Services
                 using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
-                var query = @"
+                var businessUnitFilter = BusinessUnitHelper.GetBusinessUnitWhereClause(businessUnit);
+
+                var query = $@"
                     SELECT 
                         e.execution_id,
                         e.package_name,
@@ -487,6 +515,7 @@ namespace SSISAnalyticsDashboard.Services
                         END as status_color
                     FROM [SSISDB].[catalog].[executions] e
                     WHERE e.start_time >= DATEADD(hour, -@Hours, GETDATE())
+                    {businessUnitFilter}
                     ORDER BY e.start_time DESC";
 
                 using var command = new SqlCommand(query, connection);

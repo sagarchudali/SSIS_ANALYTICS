@@ -17,6 +17,14 @@ namespace SSISAnalyticsDashboard.Controllers
 
         public async Task<IActionResult> Index()
         {
+            // Check if connection string exists in session
+            var connectionString = HttpContext.Session.GetString("SSISDBConnection");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                // Redirect to ServerConfig if not configured
+                return RedirectToAction("Index", "ServerConfig");
+            }
+
             try
             {
                 var viewModel = new DashboardViewModel
@@ -42,6 +50,12 @@ namespace SSISAnalyticsDashboard.Controllers
         [HttpGet]
         public async Task<IActionResult> GetMetrics()
         {
+            // Check if connection string exists in session
+            if (string.IsNullOrEmpty(HttpContext.Session.GetString("SSISDBConnection")))
+            {
+                return Unauthorized(new { error = "Not configured" });
+            }
+
             try
             {
                 var metrics = await _dataService.GetMetricsAsync();
@@ -57,6 +71,12 @@ namespace SSISAnalyticsDashboard.Controllers
         [HttpGet]
         public async Task<IActionResult> GetTrends()
         {
+            // Check if connection string exists in session
+            if (string.IsNullOrEmpty(HttpContext.Session.GetString("SSISDBConnection")))
+            {
+                return Unauthorized(new { error = "Not configured" });
+            }
+
             try
             {
                 var trends = await _dataService.GetTrendsAsync();
@@ -72,6 +92,12 @@ namespace SSISAnalyticsDashboard.Controllers
         [HttpGet]
         public async Task<IActionResult> GetLastExecutedPackages()
         {
+            // Check if connection string exists in session
+            if (string.IsNullOrEmpty(HttpContext.Session.GetString("SSISDBConnection")))
+            {
+                return Unauthorized(new { error = "Not configured" });
+            }
+
             try
             {
                 var packages = await _dataService.GetLastExecutedPackagesAsync(10);

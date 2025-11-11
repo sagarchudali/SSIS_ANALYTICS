@@ -6,21 +6,33 @@ namespace SSISAnalyticsDashboard.Services
 {
     public class SSISDataService : ISSISDataService
     {
-        private readonly string _connectionString;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<SSISDataService> _logger;
 
-        public SSISDataService(IConfiguration configuration, ILogger<SSISDataService> logger)
+        public SSISDataService(IHttpContextAccessor httpContextAccessor, ILogger<SSISDataService> logger)
         {
-            _connectionString = configuration.GetConnectionString("SSISDBConnection") 
-                ?? throw new ArgumentNullException("Connection string not found");
+            _httpContextAccessor = httpContextAccessor;
             _logger = logger;
+        }
+
+        private string GetConnectionString()
+        {
+            // Try to get connection string from session first
+            var sessionConnectionString = _httpContextAccessor.HttpContext?.Session?.GetString("SSISDBConnection");
+            if (!string.IsNullOrEmpty(sessionConnectionString))
+            {
+                return sessionConnectionString;
+            }
+            
+            throw new InvalidOperationException("Connection string not found in session. Please configure the server first.");
         }
 
         public async Task<ExecutionMetrics> GetMetricsAsync()
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
                 var query = @"
@@ -69,7 +81,8 @@ namespace SSISAnalyticsDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
                 var query = @"
@@ -111,7 +124,8 @@ namespace SSISAnalyticsDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
                 var query = @"
@@ -157,7 +171,8 @@ namespace SSISAnalyticsDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
                 var query = @"
@@ -217,7 +232,8 @@ namespace SSISAnalyticsDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                var connectionString = GetConnectionString();
+                using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync();
 
                 var query = $@"

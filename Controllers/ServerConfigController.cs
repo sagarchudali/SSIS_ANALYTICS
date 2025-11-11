@@ -49,7 +49,7 @@ namespace SSISAnalyticsDashboard.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Index(ServerConfigViewModel model)
+        public IActionResult Index(ServerConfigViewModel model)
         {
             try
             {
@@ -68,26 +68,14 @@ namespace SSISAnalyticsDashboard.Controllers
                 // Build connection string for Windows Authentication
                 string connectionString = $"Server={model.ServerName};Database=SSISDB;Integrated Security=true;TrustServerCertificate=true;Encrypt=false;";
 
-                // Update BOTH appsettings.json files (root and bin/Debug)
-                var rootAppSettingsPath = Path.Combine(_environment.ContentRootPath, "appsettings.json");
-                await UpdateAppSettingsFile(rootAppSettingsPath, connectionString);
-                _logger.LogInformation($"Updated root appsettings.json with server: {model.ServerName}");
+                // Store connection string in session instead of appsettings.json
+                HttpContext.Session.SetString("SSISDBConnection", connectionString);
+                HttpContext.Session.SetString("ServerName", model.ServerName);
                 
-                var binAppSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-                await UpdateAppSettingsFile(binAppSettingsPath, connectionString);
-                _logger.LogInformation($"Updated bin appsettings.json with server: {model.ServerName}");
-
-                // Reload configuration
-                var configRoot = (IConfigurationRoot)_configuration;
-                configRoot.Reload();
-
-                // Set session flag to bypass middleware check on next request
-                HttpContext.Session.SetString("ConfigJustSaved", "true");
-
-                _logger.LogInformation($"Configuration saved successfully for server: {model.ServerName}");
+                _logger.LogInformation($"Connection string stored in session for server: {model.ServerName}");
                 
                 // Redirect directly to Dashboard
-                return Redirect("/Dashboard/Index");
+                return RedirectToAction("Index", "Dashboard");
             }
             catch (Exception ex)
             {
@@ -95,36 +83,6 @@ namespace SSISAnalyticsDashboard.Controllers
                 model.ErrorMessage = $"Configuration error: {ex.Message}";
                 return View(model);
             }
-        }
-
-        private async Task UpdateAppSettingsFile(string filePath, string connectionString)
-        {
-            var json = await System.IO.File.ReadAllTextAsync(filePath);
-            var jsonObj = JsonDocument.Parse(json);
-            
-            using var stream = new MemoryStream();
-            using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
-            {
-                writer.WriteStartObject();
-                
-                foreach (var property in jsonObj.RootElement.EnumerateObject())
-                {
-                    if (property.Name == "ConnectionStrings")
-                    {
-                        writer.WriteStartObject("ConnectionStrings");
-                        writer.WriteString("SSISDBConnection", connectionString);
-                        writer.WriteEndObject();
-                    }
-                    else
-                    {
-                        property.WriteTo(writer);
-                    }
-                }
-                
-                writer.WriteEndObject();
-            }
-
-            await System.IO.File.WriteAllBytesAsync(filePath, stream.ToArray());
         }
     }
 }

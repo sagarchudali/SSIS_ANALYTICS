@@ -131,26 +131,5 @@
 
 
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.querySelector('form');
-            const submitBtn = document.getElementById('submitBtn');
-            
-            console.log('Form found:', form);
-            console.log('Submit button found:', submitBtn);
-            
-            form.addEventListener('submit', function(e) {
-                console.log('Form is being submitted!');
-                console.log('Form action:', form.action);
-                console.log('Form method:', form.method);
-                console.log('Server name value:', document.getElementById('ServerName').value);
-                // Let it submit normally - don't prevent default
-            });
-            
-            submitBtn.addEventListener('click', function(e) {
-                console.log('Submit button clicked!');
-            });
-        });
-    </script>
 }
 

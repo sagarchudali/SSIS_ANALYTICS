@@ -4,6 +4,242 @@
 }
 
 <style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --danger-gradient: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+        --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+        --card-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        --card-hover-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+    }
+    
+    .card {
+        border: none;
+        border-radius: 20px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.95);
+        overflow: hidden;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+    }
+    
+    .card-header {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        padding: 1.25rem;
+    }
+    
+    .metric-card {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: var(--primary-gradient);
+    }
+    
+    .metric-card .card-body {
+        padding: 2rem;
+    }
+    
+    .display-4 {
+        font-weight: 800;
+        font-size: 2.5rem;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .badge {
+        padding: 0.5em 1em;
+        border-radius: 50px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .badge.bg-success {
+        background: var(--success-gradient) !important;
+    }
+    
+    .badge.bg-danger {
+        background: var(--danger-gradient) !important;
+    }
+    
+    .badge.bg-primary {
+        background: var(--primary-gradient) !important;
+    }
+    
+    .badge.bg-info {
+        background: var(--info-gradient) !important;
+    }
+    
+    .badge.bg-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+        color: white;
+    }
+    
+    .badge.bg-secondary {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%) !important;
+        color: #333;
+    }
+    
+    .btn {
+        border-radius: 50px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border: none;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+    
+    .btn-primary {
+        background: var(--primary-gradient);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:hover {
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        transform: translateY(-2px);
+    }
+    
+    .btn-outline-primary, .btn-outline-success, .btn-outline-secondary {
+        border: 2px solid;
+        background: transparent;
+    }
+    
+    .btn-outline-primary {
+        border-color: #667eea;
+        color: #667eea;
+    }
+    
+    .btn-outline-primary:hover {
+        background: var(--primary-gradient);
+        color: white;
+        border-color: transparent;
+    }
+    
+    .form-select, .form-control {
+        border-radius: 15px;
+        border: 2px solid #e0e6ed;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-select:focus, .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .table {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    .table thead th {
+        background: var(--primary-gradient);
+        color: white;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border: none;
+        padding: 1rem;
+    }
+    
+    .table tbody tr {
+        transition: all 0.3s ease;
+    }
+    
+    .table tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+        transform: scale(1.01);
+    }
+    
+    h1.display-4 {
+        background: var(--dark-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 800;
+        letter-spacing: -1px;
+    }
+    
+    .alert {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .alert-danger {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        color: white;
+    }
+    
+    .alert-success {
+        background: var(--success-gradient);
+        color: white;
+    }
+    
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary-gradient);
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
+    }
+    
     .spinner-overlay {
         position: absolute;
         top: 10px;
@@ -389,50 +625,50 @@
     <!-- Metrics Cards -->
     <div class="row g-4 mb-4" id="metricsCards">
         <div class="col-md-3">
-            <div class="card border-primary position-relative">
+            <div class="card metric-card border-primary position-relative">
                 <div class="card-body">
                     <div class="spinner-overlay d-none">
                         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                     </div>
-                    <h6 class="card-subtitle mb-2 text-muted">Total Executions</h6>
+                    <h6 class="card-subtitle mb-2 text-muted"><i class="bi bi-graph-up"></i>Total Executions</h6>
                     <h2 class="card-title display-4">@Model.Metrics.TotalExecutions</h2>
-                    <p class="card-text text-muted">Last 30 days</p>
+                    <p class="card-text text-muted"><i class="bi bi-calendar3"></i> Last 30 days</p>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-success position-relative">
+            <div class="card metric-card border-success position-relative">
                 <div class="card-body">
                     <div class="spinner-overlay d-none">
                         <div class="spinner-border spinner-border-sm text-success" role="status"></div>
                     </div>
-                    <h6 class="card-subtitle mb-2 text-muted">Successful</h6>
+                    <h6 class="card-subtitle mb-2 text-muted"><i class="bi bi-check-circle"></i>Successful</h6>
                     <h2 class="card-title display-4 text-success">@Model.Metrics.SuccessfulExecutions</h2>
-                    <p class="card-text text-muted">@Model.Metrics.SuccessRate% success rate</p>
+                    <p class="card-text text-muted"><i class="bi bi-percent"></i> @Model.Metrics.SuccessRate% success rate</p>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-danger position-relative">
+            <div class="card metric-card border-danger position-relative">
                 <div class="card-body">
                     <div class="spinner-overlay d-none">
                         <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
                     </div>
-                    <h6 class="card-subtitle mb-2 text-muted">Failed</h6>
+                    <h6 class="card-subtitle mb-2 text-muted"><i class="bi bi-x-circle"></i>Failed</h6>
                     <h2 class="card-title display-4 text-danger">@Model.Metrics.FailedExecutions</h2>
-                    <p class="card-text text-muted">Requires attention</p>
+                    <p class="card-text text-muted"><i class="bi bi-exclamation-triangle"></i> Requires attention</p>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-warning position-relative">
+            <div class="card metric-card border-info position-relative">
                 <div class="card-body">
                     <div class="spinner-overlay d-none">
-                        <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+                        <div class="spinner-border spinner-border-sm text-info" role="status"></div>
                     </div>
-                    <h6 class="card-subtitle mb-2 text-muted">Avg Duration</h6>
-                    <h2 class="card-title display-4 text-warning">@Model.Metrics.AvgDuration s</h2>
-                    <p class="card-text text-muted">Average execution time</p>
+                    <h6 class="card-subtitle mb-2 text-muted"><i class="bi bi-clock-history"></i>Avg Duration</h6>
+                    <h2 class="card-title display-4 text-info">@Model.Metrics.AvgDuration s</h2>
+                    <p class="card-text text-muted"><i class="bi bi-speedometer2"></i> Average execution time</p>
                 </div>
             </div>
         </div>
@@ -718,6 +954,13 @@
         let trendsChart;
         let autoRefreshInterval;
         const REFRESH_INTERVAL = 30000; // 30 seconds
+        
+        // Global filter state
+        const currentFilter = {
+            businessUnit: '@ViewBag.SelectedBusinessUnit' || ''
+        };
+        
+        console.log('🎯 Active Business Unit Filter:', currentFilter.businessUnit || 'None');
 
         // Initialize charts
         function initCharts() {
@@ -918,20 +1161,14 @@
 
         // Update all dashboard data
         async function refreshDashboard() {
-            console.log('🔄 Refreshing dashboard data...');
-            showLoading();
+            console.log('🔄 Refreshing dashboard data with filter:', currentFilter.businessUnit || 'None');
             
-            await Promise.all([
-                updateMetrics(),
-                updateTrends(),
-                updateLastExecutedPackages()
-            ]);
-            
-            hideLoading();
-            
-            // Update last refresh time
-            const now = new Date().toLocaleTimeString();
-            console.log(`✨ Dashboard refreshed at ${now}`);
+            // Preserve current filter and reload
+            if (currentFilter.businessUnit) {
+                window.location.href = `?businessUnit=${encodeURIComponent(currentFilter.businessUnit)}`;
+            } else {
+                window.location.reload();
+            }
         }
 
         // Start auto-refresh
@@ -950,8 +1187,13 @@
 
         // Manual refresh button handler
         function manualRefresh() {
-            // Clear filters and refresh to show all data
-            window.location.href = window.location.pathname;
+            console.log('🔄 Manual refresh triggered');
+            // Refresh with current filter state
+            if (currentFilter.businessUnit) {
+                window.location.href = `?businessUnit=${encodeURIComponent(currentFilter.businessUnit)}`;
+            } else {
+                window.location.reload();
+            }
         }
 
         // SignalR Connection
@@ -1081,8 +1323,14 @@
             const statusFilter = document.getElementById('statusFilter').value;
             const searchTerm = document.getElementById('packageSearch').value.toLowerCase();
             
+            console.log('🔍 Applying filters:', { businessUnit, statusFilter, searchTerm });
+            
+            // Update global filter state
+            currentFilter.businessUnit = businessUnit;
+            
             // Reload page with businessUnit filter if selected
             if (businessUnit) {
+                console.log(`✅ Navigating to: ?businessUnit=${businessUnit}`);
                 window.location.href = `?businessUnit=${encodeURIComponent(businessUnit)}`;
                 return;
             }
@@ -1098,10 +1346,14 @@
         }
 
         function clearFilters() {
+            console.log('🧹 Clearing all filters');
             // Clear all filter fields
             document.getElementById('businessUnitFilter').value = '';
             document.getElementById('statusFilter').value = '';
             document.getElementById('packageSearch').value = '';
+            
+            // Reset global filter state
+            currentFilter.businessUnit = '';
             
             // Reload page without any query parameters
             window.location.href = window.location.pathname;
